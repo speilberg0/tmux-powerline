@@ -32,6 +32,7 @@ run_segment() {
 	local weather
 	case "$TMUX_POWERLINE_SEG_WEATHER_DATA_PROVIDER" in
 		"yahoo") weather=$(__yahoo_weather) ;;
+		"bom" ) weather=$(__bom_weather) ;;
 		*)
 			echo "Unknown weather provider [${$TMUX_POWERLINE_SEG_WEATHER_DATA_PROVIDER}]";
 			return 1
@@ -54,6 +55,26 @@ __process_settings() {
 	if [ -z "$TMUX_POWERLINE_SEG_WEATHER_LOCATION" ]; then
 		echo "No weather location specified.";
 		exit 8
+	fi
+}
+
+__bom_weather() {
+	degree=""
+	if [ -f "$tmp_file" ]; then
+		if shell_is_osx || shell_is_bsd; then
+			last_update=$(stat -f "%m" ${tmp_file})
+		elif shell_is_linux; then
+			last_update=$(stat -c "%Y" ${tmp_file})
+		fi
+		time_now=$(date +%s)
+
+		up_to_date=$(echo "(${time_now}-${last_update}) < ${update_period}" | bc)
+		if [ "$up_to_date" -eq 1 ]; then
+			__read_tmp_file
+		else
+			python segments/bom.py
+			__read_tmp_file
+		fi
 	fi
 }
 
